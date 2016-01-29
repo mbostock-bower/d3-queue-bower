@@ -1,0 +1,7 @@
+{
+  "name": "queue-async",
+  "description": "Evaluate asynchronous tasks with configurable concurrency.",
+  "main": "queue.js",
+  "license": "BSD-3-Clause",
+  "ignore": []
+}
