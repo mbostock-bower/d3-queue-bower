@@ -1,55 +1,123 @@
-# Queue
+# Queue.js
 
-**Queue.js** is yet another asynchronous helper library for JavaScript. Think of Queue as a minimalist version of [Async.js](https://github.com/caolan/async) that allows fine-tuning over parallelism. Or, think of it as a version of [TameJs](https://github.com/maxtaco/tamejs/) that does not use code generation.
+**Queue.js** is a minimalist library for escaping callback hell in asynchronous JavaScript. As of release 1.2, Queue is 560 bytes gzipped. (Compare that to [Async.js](https://github.com/caolan/async), which is 4,300!)
 
-For example, if you wanted to stat two files in parallel:
+A queue evaluates zero or more asynchronous tasks with tunable parallelism. Each task is a function that takes a callback as its last argument. For example, here’s a task that says hello after a short delay:
+
+```js
+function delayedHello(callback) {
+  setTimeout(function() {
+    console.log("Hello!");
+    callback(null);
+  }, 250);
+}
+```
+
+When a task completes, it must call the provided callback. The first argument to the callback should be null if the task is successfull, or the error if the task failed. The optional second argument to the callback is the return value of the task. (To return multiple values from a single callback, wrap the results in an object or array.)
+
+To run multiple tasks in parallel, create a queue, *defer* your tasks, and then register an *await* callback to be called when all of the tasks complete (or an error occurs):
+
+```js
+var q = queue();
+q.defer(delayedHello);
+q.defer(delayedHello);
+q.await(function(error) {
+  if (error) throw error;
+  console.log("Goodbye!");
+});
+```
+
+Of course, you can also use a `for` loop to defer many tasks:
+
+```js
+var q = queue();
+
+for (var i = 0; i < 1000; ++i) {
+  q.defer(delayedHello);
+}
+
+q.awaitAll(function(error) {
+  if (error) throw error;
+  console.log("Goodbye!");
+});
+```
+
+Tasks can take optional arguments. For example, here’s how to configure the delay before hello and provide a name:
+
+```js
+function delayedHello(name, delay, callback) {
+  setTimeout(function() {
+    console.log("Hello, " + name + "!");
+    callback(null);
+  }, delay);
+}
+```
+
+Any additional arguments provided to [*queue*.defer](#queue_defer) are automatically passed along to the task function before the callback argument. You can also use method chaining for conciseness, avoiding the need for a local variable:
+
+```js
+queue()
+    .defer(delayedHello, "Alice", 250)
+    .defer(delayedHello, "Bob", 500)
+    .defer(delayedHello, "Carol", 750)
+    .await(function(error) {
+      if (error) throw error;
+      console.log("Goodbye!");
+    });
+```
+
+The [asynchronous callback pattern](https://github.com/maxogden/art-of-node#callbacks) is very common in Node.js, so Queue works directly with many Node APIs. For example, to [stat two files](https://nodejs.org/dist/latest/docs/api/fs.html#fs_fs_stat_path_callback) in parallel:
 
 ```js
 queue()
     .defer(fs.stat, __dirname + "/../Makefile")
     .defer(fs.stat, __dirname + "/../package.json")
-    .await(function(error, file1, file2) { console.log(file1, file2); });
+    .await(function(error, file1, file2) {
+      if (error) throw error;
+      console.log(file1, file2);
+    });
 ```
 
-Or, if you wanted to run a bazillion asynchronous tasks (here represented as an array of closures) serially:
+You can also make abortable tasks: these tasks return an object with an *abort* method which terminates the task. So, if a task calls [setTimeout](https://developer.mozilla.org/en-US/docs/Web/API/WindowTimers/setTimeout) on start, it can call [clearTimeout](https://developer.mozilla.org/en-US/docs/Web/API/WindowTimers/clearTimeout) on abort. For example:
 
 ```js
-var q = queue(1);
-tasks.forEach(function(t) { q.defer(t); });
-q.awaitAll(function(error, results) { console.log("all done!"); });
+function delayedHello(name, delay, callback) {
+  var id = setTimeout(function() {
+    console.log("Hello, " + name + "!");
+    callback(null);
+  }, delay);
+  return {
+    abort: function() {
+      clearTimeout(id);
+    }
+  };
+}
 ```
 
-Queue can be run inside Node.js or in a browser.
+When you call [*queue*.abort](#queue_abort), any in-progress tasks will be immediately aborted; in addition, any pending (not-yet-started) tasks not be started. Note that you can also use *queue*.abort *without* abortable tasks, in which case pending tasks will be cancelled, though active tasks will continue to run. Conveniently, the [d3-request](https://github.com/d3/d3-request) library implements abort atop XMLHttpRequest. For example:
+
+```js
+var q = queue()
+    .defer(d3.request, "http://www.google.com:81")
+    .defer(d3.request, "http://www.google.com:81")
+    .defer(d3.request, "http://www.google.com:81")
+    .awaitAll(function(error, results) {
+      if (error) throw error;
+      console.log(results);
+    });
+```
+
+To abort these requests, call `q.abort()`.
 
 ## Installation
 
-In a browser, you can use the official hosted copy on [d3js.org](http://d3js.org):
+If you use NPM, `npm install queue-async`. Otherwise, download the [latest release](https://github.com/mbostock/queue/releases/latest). The released bundle supports AMD, CommonJS, and vanilla environments. You can also load directly from [d3js.org](https://d3js.org):
 
 ```html
 <script src="https://d3js.org/queue.v1.min.js"></script>
 ```
 
-Queue supports the [universal module definition](https://github.com/umdjs/umd) API. For example, with [RequireJS](http://requirejs.org/):
-
-```js
-require.config({
-  paths: {
-    queue: "https://d3js.org/queue.v1.min"
-  }
-});
-
-require(["queue"], function(queue) {
-  console.log(queue.version);
-});
-```
-
-In Node, use [NPM](http://npmjs.org) to install:
-
-```bash
-npm install queue-async
-```
-
-And then `require("queue-async")`. (The package name is [queue-async](https://npmjs.org/package/queue-async) because the name “queue” was already taken.)
+In a vanilla environment, a `queue` global function is exported. [Try queue in your browser.](https://tonicdev.com/npm/queue-async)
 
 ## API Reference
 
@@ -59,7 +127,9 @@ Constructs a new queue with the specified *parallelism*. If *parallelism* is not
 
 <a href="#queue_defer" name="queue_defer">#</a> <i>queue</i>.<b>defer</b>(<i>task</i>[, <i>arguments</i>…])
 
-Adds the specified asynchronous *task* callback to the queue, with any optional *arguments*. The *task* will be called with the specified optional arguments and an additional callback argument; the callback must then be invoked by the task when it has finished. The task must invoke the callback with two arguments: the error, if any, and the result of the task. For example:
+Adds the specified asynchronous *task* callback to the queue, with any optional *arguments*. The *task* will be called with the specified optional arguments and an additional callback argument; the callback must then be invoked by the task when it has finished. The task must invoke the callback with two arguments: the error, if any, and the result of the task. To return multiple results from a single callback, wrap the results in an object or array.
+
+For example, here’s a task which computes the answer to the ultimate question of life, the universe, and everything after a short delay:
 
 ```js
 function simpleTask(callback) {
@@ -69,11 +139,13 @@ function simpleTask(callback) {
 }
 ```
 
-To return multiple results from a single callback, wrap those results in an object or array.
-
 If the task calls back with an error, any tasks that were scheduled *but not yet started* will not run. For a serial queue (of *parallelism* 1), this means that a task will only run if all previous tasks succeed. For a queue with higher parallelism, only the first error that occurs is reported to the await callback, and tasks that were started before the error occurred will continue to run; note, however, that their results will not be reported to the await callback.
 
 Tasks can only be deferred before [*queue*.await](#queue_await) or [*queue*.awaitAll](#queue_awaitAll) is called. If a task is deferred after then, an error is thrown.
+
+<a href="#queue_abort" name="queue_abort">#</a> <i>queue</i>.<b>abort</b>()
+
+Aborts any active tasks, invoking each active task’s *task*.abort function, if any. Also prevents any new tasks from starting, and invokes the [*queue*.await](#queue_await) or [*queue*.awaitAll](#queue_awaitAll) callback with an error indicating that the queue was aborted. See the [introduction](#queuejs) for an example implementation of an abortable task.
 
 <a href="#queue_await" name="queue_await">#</a> <i>queue</i>.<b>await</b>(<i>callback</i>)
 
