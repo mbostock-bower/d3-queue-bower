@@ -1,8 +1,8 @@
 (function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
-  typeof define === 'function' && define.amd ? define('queue', factory) :
-  (global.queue = factory());
-}(this, function () { 'use strict';
+  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+  typeof define === 'function' && define.amd ? define('d3-queue', ['exports'], factory) :
+  (factory((global.d3_queue = {})));
+}(this, function (exports) { 'use strict';
 
   var slice = [].slice;
 
@@ -109,8 +109,9 @@
     return newQueue(arguments.length ? +concurrency : Infinity);
   }
 
-  queue.version = "1.2.2";
+  var version = "2.0.0";
 
-  return queue;
+  exports.version = version;
+  exports.queue = queue;
 
 }));
