@@ -1,6 +1,6 @@
 # d3-queue
 
-A **queue** evaluates zero or more *deferred* asynchronous tasks with configurable concurrency: you control how many tasks run at the same time. When all the tasks complete, or an error occurs, the queue passes the results to your *await* callback. This library is similar to [Async.js](https://github.com/caolan/async)’s [queue](https://github.com/caolan/async#queue), but features a much smaller footprint: as of release 1.2, d3-queue is only 566 bytes gzipped, compared to 4,300 for Async.
+A **queue** evaluates zero or more *deferred* asynchronous tasks with configurable concurrency: you control how many tasks run at the same time. When all the tasks complete, or an error occurs, the queue passes the results to your *await* callback. This library is similar to [Async.js](https://github.com/caolan/async)’s [parallel](https://github.com/caolan/async#paralleltasks-callback) (when *concurrency* is infinite), [series](https://github.com/caolan/async#seriestasks-callback) (when *concurrency* is 1), and [queue](https://github.com/caolan/async#queue), but features a much smaller footprint: as of release 1.2, d3-queue is about 600 bytes gzipped, compared to 4,300 for Async.
 
 Each task is defined as a function that takes a callback as its last argument. For example, here’s a task that says hello after a short delay:
 
@@ -127,7 +127,7 @@ Constructs a new queue with the specified *concurrency*. If *concurrency* is not
 
 <a href="#queue_defer" name="queue_defer">#</a> <i>queue</i>.<b>defer</b>(<i>task</i>[, <i>arguments</i>…])
 
-Adds the specified asynchronous *task* callback to the queue, with any optional *arguments*. The *task* will be called with the specified optional arguments and an additional callback argument; the callback must then be invoked by the task when it has finished. The task must invoke the callback with two arguments: the error, if any, and the result of the task. To return multiple results from a single callback, wrap the results in an object or array.
+Adds the specified asynchronous *task* callback to the queue, with any optional *arguments*. The *task* is a function that will be called when the task should start. It is passed the specified optional *arguments* and an additional *callback* as the last argument; the callback must be invoked by the task when it finishes. The task must invoke the callback with two arguments: the *error*, if any, and the *result* of the task. To return multiple results from a single callback, wrap the results in an object or array.
 
 For example, here’s a task which computes the answer to the ultimate question of life, the universe, and everything after a short delay:
 
@@ -141,11 +141,11 @@ function simpleTask(callback) {
 
 If the task calls back with an error, any tasks that were scheduled *but not yet started* will not run. For a serial queue (of *concurrency* 1), this means that a task will only run if all previous tasks succeed. For a queue with higher concurrency, only the first error that occurs is reported to the await callback, and tasks that were started before the error occurred will continue to run; note, however, that their results will not be reported to the await callback.
 
-Tasks can only be deferred before [*queue*.await](#queue_await) or [*queue*.awaitAll](#queue_awaitAll) is called. If a task is deferred after then, an error is thrown.
+Tasks can only be deferred before [*queue*.await](#queue_await) or [*queue*.awaitAll](#queue_awaitAll) is called. If a task is deferred after then, an error is thrown. If the *task* is not a function, an error is thrown.
 
 <a href="#queue_abort" name="queue_abort">#</a> <i>queue</i>.<b>abort</b>()
 
-Aborts any active tasks, invoking each active task’s *task*.abort function, if any. Also prevents any new tasks from starting, and invokes the [*queue*.await](#queue_await) or [*queue*.awaitAll](#queue_awaitAll) callback with an error indicating that the queue was aborted. See the [introduction](#queuejs) for an example implementation of an abortable task.
+Aborts any active tasks, invoking each active task’s *task*.abort function, if any. Also prevents any new tasks from starting, and invokes the [*queue*.await](#queue_await) or [*queue*.awaitAll](#queue_awaitAll) callback with an error indicating that the queue was aborted. See the [introduction](#d3-queue) for an example implementation of an abortable task.
 
 <a href="#queue_await" name="queue_await">#</a> <i>queue</i>.<b>await</b>(<i>callback</i>)
 
@@ -158,7 +158,7 @@ queue()
     .await(function(error, file1, file2) { console.log(file1, file2); });
 ```
 
-If all [deferred](#queue_defer) tasks have already completed, the callback will be invoked immediately. This method may only be called once, after any tasks have been deferred. If this method is called multiple times, or if it is called after [*queue*.awaitAll](#queue_awaitAll), an error is thrown.
+If all [deferred](#queue_defer) tasks have already completed, the callback will be invoked immediately. This method may only be called once, after any tasks have been deferred. If this method is called multiple times, or if it is called after [*queue*.awaitAll](#queue_awaitAll), an error is thrown. If the *callback* is not a function, an error is thrown.
 
 <a href="#queue_awaitAll" name="queue_awaitAll">#</a> <i>queue</i>.<b>awaitAll</b>(<i>callback</i>)
 
@@ -171,4 +171,4 @@ queue()
     .awaitAll(function(error, files) { console.log(files); });
 ```
 
-If all [deferred](#queue_defer) tasks have already completed, the callback will be invoked immediately. This method may only be called once, after any tasks have been deferred. If this method is called multiple times, or if it is called after [*queue*.await](#queue_await), an error is thrown.
+If all [deferred](#queue_defer) tasks have already completed, the callback will be invoked immediately. This method may only be called once, after any tasks have been deferred. If this method is called multiple times, or if it is called after [*queue*.await](#queue_await), an error is thrown. If the *callback* is not a function, an error is thrown.
