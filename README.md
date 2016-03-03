@@ -1,6 +1,6 @@
 # d3-queue
 
-A **queue** evaluates zero or more *deferred* asynchronous tasks with configurable concurrency: you control how many tasks run at the same time. When all the tasks complete, or an error occurs, the queue passes the results to your *await* callback. This library is similar to [Async.js](https://github.com/caolan/async)’s [parallel](https://github.com/caolan/async#paralleltasks-callback) (when *concurrency* is infinite), [series](https://github.com/caolan/async#seriestasks-callback) (when *concurrency* is 1), and [queue](https://github.com/caolan/async#queue), but features a much smaller footprint: as of release 2, d3-queue is about 600 bytes gzipped, compared to 4,300 for Async.
+A **queue** evaluates zero or more *deferred* asynchronous tasks with configurable concurrency: you control how many tasks run at the same time. When all the tasks complete, or an error occurs, the queue passes the results to your *await* callback. This library is similar to [Async.js](https://github.com/caolan/async)’s [parallel](https://github.com/caolan/async#paralleltasks-callback) (when *concurrency* is infinite), [series](https://github.com/caolan/async#seriestasks-callback) (when *concurrency* is 1), and [queue](https://github.com/caolan/async#queue), but features a much smaller footprint: as of release 2, d3-queue is about 700 bytes gzipped, compared to 4,300 for Async.
 
 Each task is defined as a function that takes a callback as its last argument. For example, here’s a task that says hello after a short delay:
 
@@ -109,15 +109,20 @@ var q = d3.queue()
 
 To abort these requests, call `q.abort()`.
 
-## Installation
+## Installing
 
-If you use NPM, `npm install d3-queue`. If you use Bower, `bower install d3-queue`. Otherwise, download the [latest release](https://github.com/d3/d3-queue/releases/latest). The released bundle supports AMD, CommonJS, and vanilla environments. You can also load directly from [d3js.org](https://d3js.org):
+If you use NPM, `npm install d3-queue`. If you use Bower, `bower install d3-queue`. Otherwise, download the [latest release](https://github.com/d3/d3-queue/releases/latest). You can also load directly from [d3js.org](https://d3js.org), either as a [standalone library](https://d3js.org/d3-queue.v2.min.js) or as part of [D3 4.0 alpha](https://github.com/mbostock/d3/tree/4). AMD, CommonJS, and vanilla environments are supported. In vanilla, a `d3_queue` global is exported:
 
 ```html
 <script src="https://d3js.org/d3-queue.v2.min.js"></script>
+<script>
+
+var q = d3_queue.queue();
+
+</script>
 ```
 
-In a vanilla environment, a `d3_queue` global function is exported. [Try d3-queue in your browser.](https://tonicdev.com/npm/d3-queue)
+[Try d3-queue in your browser.](https://tonicdev.com/npm/d3-queue)
 
 ## API Reference
 
@@ -145,7 +150,7 @@ Tasks can only be deferred before [*queue*.await](#queue_await) or [*queue*.awai
 
 <a href="#queue_abort" name="queue_abort">#</a> <i>queue</i>.<b>abort</b>()
 
-Aborts any active tasks, invoking each active task’s *task*.abort function, if any. Also prevents any new tasks from starting, and invokes the [*queue*.await](#queue_await) or [*queue*.awaitAll](#queue_awaitAll) callback with an error indicating that the queue was aborted. See the [introduction](#d3-queue) for an example implementation of an abortable task.
+Aborts any active tasks, invoking each active task’s *task*.abort function, if any. Also prevents any new tasks from starting, and immediately invokes the [*queue*.await](#queue_await) or [*queue*.awaitAll](#queue_awaitAll) callback with an error indicating that the queue was aborted. See the [introduction](#d3-queue) for an example implementation of an abortable task. Note that if your tasks are not abortable, any running tasks will continue to run, even after the await callback has been invoked with the abort error. The await callback is invoked exactly once on abort, and so is not called when any running tasks subsequently succeed or fail.
 
 <a href="#queue_await" name="queue_await">#</a> <i>queue</i>.<b>await</b>(<i>callback</i>)
 
