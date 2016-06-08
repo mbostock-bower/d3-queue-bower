@@ -1,10 +1,9 @@
+// https://d3js.org/d3-queue/ Version 3.0.0. Copyright 2016 Mike Bostock.
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
-  (factory((global.d3_queue = global.d3_queue || {})));
+  (factory((global.d3 = global.d3 || {})));
 }(this, function (exports) { 'use strict';
-
-  var version = "2.0.3";
 
   var slice = [].slice;
 
@@ -113,7 +112,8 @@
     return new Queue(arguments.length ? +concurrency : Infinity);
   }
 
-  exports.version = version;
   exports.queue = queue;
+
+  Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
